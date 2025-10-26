@@ -3,17 +3,22 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { GraduationCap, Eye, EyeOff } from "lucide-react"
+import { GraduationCap, Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react"
+import { authService, ApiError } from "@/lib/api"
 
 export function LoginForm() {
+  const router = useRouter()
   const [curp, setCurp] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [curpError, setCurpError] = useState("")
+  const [loginError, setLoginError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
   const validateCURP = (value: string) => {
     // CURP must be exactly 18 alphanumeric characters
@@ -41,19 +46,57 @@ export function LoginForm() {
     const value = e.target.value.toUpperCase()
     setCurp(value)
     validateCURP(value)
+    setLoginError("") // Limpiar error de login al cambiar el CURP
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value)
+    setLoginError("") // Limpiar error de login al cambiar la contraseña
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setLoginError("")
 
     if (curp.length !== 18) {
       setCurpError("El CURP debe tener 18 caracteres")
       return
     }
 
-    if (!curpError && curp && password) {
-      console.log("Login attempt:", { curp, password })
-      // Handle login logic here
+    if (!curp || !password) {
+      setLoginError("Por favor ingresa tu CURP y contraseña")
+      return
+    }
+
+    if (curpError) {
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const response = await authService.login({ curp, password })
+      
+      console.log("Login exitoso:", response)
+      
+      // Redirigir al dashboard o página principal
+      router.push("/dashboard")
+    } catch (error) {
+      console.error("Error en login:", error)
+      
+      if (error instanceof ApiError) {
+        if (error.status === 401) {
+          setLoginError("CURP o contraseña incorrectos")
+        } else if (error.status === 500) {
+          setLoginError("Error en el servidor. Por favor intenta más tarde.")
+        } else {
+          setLoginError(error.message || "Error al iniciar sesión")
+        }
+      } else {
+        setLoginError("No se pudo conectar con el servidor. Verifica tu conexión.")
+      }
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -70,6 +113,13 @@ export function LoginForm() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {loginError && (
+            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive">{loginError}</p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="curp" className="text-sm font-medium">
               CURP
@@ -82,6 +132,7 @@ export function LoginForm() {
               onChange={handleCurpChange}
               maxLength={18}
               className={curpError ? "border-destructive focus-visible:ring-destructive" : ""}
+              disabled={isLoading}
               required
             />
             {curpError && <p className="text-sm text-destructive">{curpError}</p>}
@@ -98,15 +149,17 @@ export function LoginForm() {
                 type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={handlePasswordChange}
                 className="pr-10"
+                disabled={isLoading}
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                 aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                disabled={isLoading}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -122,9 +175,16 @@ export function LoginForm() {
           <Button
             type="submit"
             className="w-full h-11 text-base font-medium"
-            disabled={!!curpError || curp.length !== 18 || !password}
+            disabled={!!curpError || curp.length !== 18 || !password || isLoading}
           >
-            Iniciar Sesión
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Iniciando sesión...
+              </>
+            ) : (
+              "Iniciar Sesión"
+            )}
           </Button>
         </form>
 
