@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -284,11 +285,18 @@ export function StudentDashboard() {
 
         {/* Tabla de calificaciones */}
         <Card>
-          <CardHeader>
-            <CardTitle>Calificaciones por Materia</CardTitle>
-            <CardDescription>
-              Detalle de tu rendimiento académico en cada asignatura - Periodo {calificaciones.periodo}
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="space-y-1">
+              <CardTitle>Calificaciones por Materia</CardTitle>
+              <CardDescription>
+                Detalle de tu rendimiento académico en cada asignatura - Periodo {calificaciones.periodo}
+              </CardDescription>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/grades">
+                Ver Detalles Completos
+              </Link>
+            </Button>
           </CardHeader>
           <CardContent>
             <Table>
